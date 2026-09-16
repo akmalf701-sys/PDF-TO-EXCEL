@@ -1,0 +1,6 @@
+{
+  "name": "RekeningKoran to Excel Converter",
+  "description": "SaaS platform untuk konversi PDF Rekening Koran (BCA, Mandiri, BNI, BRI) menjadi file Excel (.xlsx) dengan smart parser dan data cleaning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
