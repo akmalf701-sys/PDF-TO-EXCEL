@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileText, CheckCircle, AlertCircle, PlayCircle, Shield, Building2, Sparkles, Loader2 } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle, AlertCircle, PlayCircle, Shield, Building2, Sparkles, Loader2, Download } from 'lucide-react';
 import { SupportedBank } from '../types';
 import { SUPPORTED_BANKS, SAMPLE_BANK_STATEMENTS } from '../data/bankPresets';
 
@@ -22,6 +22,17 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
   const [selectedBank, setSelectedBank] = useState<SupportedBank>('AUTO');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTestWithSamplePdf = async () => {
+    try {
+      const response = await fetch('/sample_mutasi_bca.pdf');
+      const blob = await response.blob();
+      const file = new File([blob], 'sample_mutasi_bca.pdf', { type: 'application/pdf' });
+      onFileSelected(file, 'BCA');
+    } catch (err) {
+      setErrorMessage('Gagal memuat file contoh PDF BCA.');
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -198,6 +209,48 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
             <span>{errorMessage}</span>
           </div>
         )}
+      </div>
+
+      {/* Featured Sample BCA PDF Card */}
+      <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-bold text-white">
+                Contoh Dokumen Asli: Rekening Koran BCA (e-Statement)
+              </h3>
+              <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                PDF Siap Uji
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              File PDF mutasi rekening BCA autentik (9 baris transaksi: DB/CR, BI-FAST, QRIS, bunga & saldo).
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="/sample_mutasi_bca.pdf"
+            download="sample_mutasi_bca.pdf"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl transition-colors border border-slate-700"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Unduh PDF</span>
+          </a>
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={handleTestWithSamplePdf}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50"
+          >
+            <PlayCircle className="w-3.5 h-3.5" />
+            <span>Uji Langsung File Ini</span>
+          </button>
+        </div>
       </div>
 
       {/* Quick Test Drive with Sample Statements */}

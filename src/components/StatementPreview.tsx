@@ -15,10 +15,12 @@ import {
   FileSpreadsheet,
   Layers,
   Sparkles,
-  Info
+  Info,
+  Database
 } from 'lucide-react';
 import { ParseResult, Transaction } from '../types';
 import { exportStatementToExcel } from '../utils/excelExporter';
+import { GoogleSheetsModal } from './GoogleSheetsModal';
 
 interface StatementPreviewProps {
   result: ParseResult;
@@ -33,6 +35,7 @@ export const StatementPreview: React.FC<StatementPreviewProps> = ({ result, onRe
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'DB' | 'CR'>('ALL');
   const [isExporting, setIsExporting] = useState(false);
+  const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false);
 
   // Formatter uang Rupiah
   const formatIDR = (val: number) => {
@@ -114,7 +117,7 @@ export const StatementPreview: React.FC<StatementPreviewProps> = ({ result, onRe
         </div>
 
         {/* Primary Action Buttons */}
-        <div className="flex items-center gap-2.5 self-end md:self-center">
+        <div className="flex items-center gap-2.5 self-end md:self-center flex-wrap justify-end">
           <button
             id="reset-statement-btn"
             type="button"
@@ -123,6 +126,16 @@ export const StatementPreview: React.FC<StatementPreviewProps> = ({ result, onRe
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Unggah Ulang</span>
+          </button>
+
+          <button
+            id="sync-sheets-btn"
+            type="button"
+            onClick={() => setIsSheetsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all shadow-2xs hover:border-emerald-400"
+          >
+            <Database className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Simpan ke Google Sheets</span>
           </button>
 
           <button
@@ -395,6 +408,13 @@ export const StatementPreview: React.FC<StatementPreviewProps> = ({ result, onRe
           )}
         </div>
       </div>
+
+      {/* Google Sheets Database Synchronization Modal */}
+      <GoogleSheetsModal
+        isOpen={isSheetsModalOpen}
+        onClose={() => setIsSheetsModalOpen(false)}
+        result={result}
+      />
     </div>
   );
 };

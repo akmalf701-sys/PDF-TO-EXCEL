@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rekening Koran to Google Sheets</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- PDF.js CDN untuk parsing PDF in-memory -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- SheetJS CDN untuk download .xlsx cadangan -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-bold text-lg shadow-xs">
+          📊
+        </div>
+        <div>
+          <h1 class="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
+            Rekening<span class="text-emerald-600">Koran</span> to Sheets
+          </h1>
+          <p class="text-[11px] text-slate-500 hidden sm:block">
+            Konversi PDF Rekening Koran Langsung ke Google Spreadsheet Aktif
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Google Apps Script Ready
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+    <!-- Upload Screen -->
+    <div id="uploadScreen" class="space-y-6">
+      <!-- Info Banner -->
+      <div class="text-center max-w-2xl mx-auto space-y-2">
+        <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">
+          Unggah Dokumen Rekening Koran
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-600">
+          Ekstraksi otomatis untuk bank BCA, Mandiri, BRI, dan BNI. Data dibersihkan secara lokal di browser, lalu dimasukkan langsung ke tab sheet Anda.
+        </p>
+      </div>
+
+      <!-- Dropzone -->
+      <div 
+        id="dropZone"
+        class="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all shadow-xs"
+      >
+        <input type="file" id="pdfFileInput" accept=".pdf" class="hidden">
+        
+        <div class="w-14 h-14 mx-auto mb-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 text-2xl">
+          📄
+        </div>
+
+        <h3 class="text-base font-bold text-slate-900">
+          Tarik & Lepaskan File PDF Rekening Koran di Sini
+        </h3>
+        <p class="text-xs text-slate-500 mt-1">
+          atau <span class="text-emerald-600 font-semibold underline">klik untuk memilih file</span>
+        </p>
+
+        <div id="loadingStatus" class="hidden mt-6 max-w-md mx-auto space-y-2">
+          <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+            <div id="progressBar" class="bg-emerald-600 h-full w-0 transition-all duration-300"></div>
+          </div>
+          <p id="statusText" class="text-xs font-mono text-emerald-700 animate-pulse">
+            Memproses dokumen...
+          </p>
+        </div>
+
+        <div id="errorMessage" class="hidden mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl"></div>
+      </div>
+
+      <!-- Quick Sample Buttons -->
+      <div class="bg-slate-100/80 border border-slate-200 rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-slate-800">
+            🧪 Uji Coba Cepat dengan Rekening Koran Contoh:
+          </span>
+          <span class="text-[11px] text-slate-500">Klik salah satu bank untuk simulasi</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button onclick="loadSample('BCA')" class="p-3 bg-white border border-slate-200 hover:border-emerald-500 rounded-xl text-left shadow-2xs transition-all">
+            <div class="text-xs font-bold text-slate-900">BCA e-Statement</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">8 baris transaksi (CR/DB, BI-FAST, QRIS)</div>
+          </button>
+          <button onclick="loadSample('MANDIRI')" class="p-3 bg-white border border-slate-200 hover:border-emerald-500 rounded-xl text-left shadow-2xs transition-all">
+            <div class="text-xs font-bold text-slate-900">Bank Mandiri Livin</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">6 baris transaksi debit & kredit terpisah</div>
+          </button>
+          <button onclick="loadSample('BRI')" class="p-3 bg-white border border-slate-200 hover:border-emerald-500 rounded-xl text-left shadow-2xs transition-all">
+            <div class="text-xs font-bold text-slate-900">BRI (BritAma / Simpedes)</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">5 baris transaksi sandi teller & BRIVA</div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Screen (Tampil Setelah PDF Diproses) -->
+    <div id="previewScreen" class="hidden space-y-6">
+
+      <!-- Action Top Bar -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 id="previewBankName" class="text-base font-bold text-slate-900"></h3>
+            <span class="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Pembersihan Selesai</span>
+          </div>
+          <p id="previewSubtitle" class="text-xs text-slate-500 mt-0.5"></p>
+        </div>
+
+        <div class="flex items-center gap-2 self-end md:self-center">
+          <button onclick="resetView()" class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+            Unggah Ulang
+          </button>
+
+          <button onclick="downloadExcelLocal()" class="px-3.5 py-2 text-xs font-semibold text-slate-700 border border-slate-300 hover:bg-slate-50 rounded-xl transition-colors">
+            Unduh .xlsx
+          </button>
+
+          <button id="saveToSheetsBtn" onclick="saveToGoogleSheets()" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-all flex items-center gap-1.5">
+            <span>💾 Simpan ke Google Sheet Ini</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Database Target Banner -->
+      <div class="p-3.5 bg-slate-900 text-white rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+            🗄️
+          </div>
+          <div>
+            <div class="text-[11px] font-bold text-slate-200">Database Spreadsheet Terhubung</div>
+            <div class="text-[10px] font-mono text-emerald-400">ID: 1the3kaLQ4cFaq8A7JyDfAO6SCtuKpGGXdvrKLEq6YWc</div>
+          </div>
+        </div>
+        <a 
+          href="https://docs.google.com/spreadsheets/d/1the3kaLQ4cFaq8A7JyDfAO6SCtuKpGGXdvrKLEq6YWc/edit" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-3.5 py-1.5 rounded-xl transition-colors shrink-0"
+        >
+          Buka Sheet ↗
+        </a>
+      </div>
+
+      <!-- Success Notification Box -->
+      <div id="saveSuccessAlert" class="hidden p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 flex items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-bold">Berhasil Disimpan ke Google Spreadsheet!</p>
+          <p id="saveSuccessMessage" class="text-xs text-emerald-700 mt-0.5"></p>
+        </div>
+        <button onclick="this.parentElement.classList.add('hidden')" class="text-emerald-700 font-bold text-xs">Tutup</button>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span class="text-xs text-slate-500 font-medium">Total Pemasukan (Kredit)</span>
+          <p id="kpiKredit" class="text-base font-bold font-mono text-emerald-700 mt-1">Rp 0</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span class="text-xs text-slate-500 font-medium">Total Pengeluaran (Debit)</span>
+          <p id="kpiDebit" class="text-base font-bold font-mono text-rose-700 mt-1">Rp 0</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span class="text-xs text-slate-500 font-medium">Net Arus Kas</span>
+          <p id="kpiNet" class="text-base font-bold font-mono text-slate-900 mt-1">Rp 0</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span class="text-xs text-slate-500 font-medium">Saldo Akhir</span>
+          <p id="kpiSaldo" class="text-base font-bold font-mono text-slate-900 mt-1">Rp 0</p>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+        <div class="p-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
+          <span class="font-bold text-slate-800">Pratinjau Tabel Transaksi</span>
+          <div class="flex items-center gap-1.5 font-medium">
+            <button onclick="setLimit('5')" id="lim5" class="px-2.5 py-1 rounded-lg bg-white shadow-xs font-bold text-slate-900">5 Baris</button>
+            <button onclick="setLimit('10')" id="lim10" class="px-2.5 py-1 rounded-lg text-slate-500">10 Baris</button>
+            <button onclick="setLimit('all')" id="limAll" class="px-2.5 py-1 rounded-lg text-slate-500">Semua</button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-900 text-white font-semibold">
+                <th class="p-2.5 text-center w-12">No</th>
+                <th class="p-2.5 text-center w-24">Tanggal</th>
+                <th class="p-2.5 min-w-[280px]">Keterangan Transaksi</th>
+                <th class="p-2.5 text-center w-16">Tipe</th>
+                <th class="p-2.5 text-right w-32">Debit (Rp)</th>
+                <th class="p-2.5 text-right w-32">Kredit (Rp)</th>
+                <th class="p-2.5 text-right w-36">Saldo (Rp)</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 font-sans">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
+    Rekening Koran to Google Sheets • 100% In-Memory Processing
+  </footer>
+
+  <script>
+    // Konfigurasi Worker PDF.js
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    let parsedResult = null;
+    let currentLimit = '5';
+
+    const formatIDR = (val) => {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+      }).format(val || 0);
+    };
+
+    // Parser Angka Indonesia
+    function parseIndoAmount(str) {
+      if (!str) return 0;
+      let s = String(str).replace(/Rp\.?/gi, '').replace(/IDR/gi, '').trim();
+      if (s.includes('.') && s.includes(',')) {
+        if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+          s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      } else if (s.includes(',')) {
+        const parts = s.split(',');
+        s = (parts.length === 2 && parts[1].length === 2) ? s.replace(',', '.') : s.replace(/,/g, '');
+      } else if (s.includes('.')) {
+        if ((s.match(/\./g) || []).length > 1) {
+          s = s.replace(/\./g, '');
+        } else {
+          const parts = s.split('.');
+          if (parts[1] && parts[1].length === 3) s = s.replace('.', '');
+        }
+      }
+      s = s.replace(/[^0-9.-]/g, '');
+      const num = parseFloat(s);
+      return isNaN(num) ? 0 : num;
+    }
+
+    // Drag and Drop Event Listeners
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('pdfFileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-emerald-500', 'bg-emerald-50/50'); });
+    dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/50'); });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/50');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processPdfFile(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        processPdfFile(e.target.files[0]);
+      }
+    });
+
+    // Proses Ekstraksi PDF
+    async function processPdfFile(file) {
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        showError('Hanya file PDF yang diperbolehkan.');
+        return;
+      }
+
+      showLoading(true, 'Mengekstrak layout tabel PDF...');
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const lines = [];
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          updateProgress((i / pdf.numPages) * 70, `Membaca halaman ${i} dari ${pdf.numPages}...`);
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          
+          const items = textContent.items;
+          items.sort((a, b) => {
+            const yDiff = b.transform[5] - a.transform[5];
+            if (Math.abs(yDiff) > 3) return yDiff;
+            return a.transform[4] - b.transform[4];
+          });
+
+          let currentY = null;
+          let currentLine = '';
+          for (const it of items) {
+            const y = Math.round(it.transform[5]);
+            if (currentY === null || Math.abs(y - currentY) > 3) {
+              if (currentLine.trim()) lines.push(currentLine.trim());
+              currentY = y;
+              currentLine = it.str;
+            } else {
+              currentLine += ' ' + it.str;
+            }
+          }
+          if (currentLine.trim()) lines.push(currentLine.trim());
+        }
+
+        updateProgress(90, 'Menyambung multi-line description & membersihkan angka...');
+        const result = parseStatementLines(lines, file.name);
+        parsedResult = result;
+        
+        updateProgress(100, 'Selesai!');
+        setTimeout(() => {
+          showLoading(false);
+          renderPreview(result);
+        }, 300);
+
+      } catch (err) {
+        showError('Gagal memproses PDF: ' + err.message);
+        showLoading(false);
+      }
+    }
+
+    // Parsing Baris Rekening Koran
+    function parseStatementLines(lines, filename) {
+      const fullText = lines.join(' ');
+      let bankName = 'BANK CENTRAL ASIA (BCA)';
+      if (/mandiri/i.test(fullText)) bankName = 'BANK MANDIRI';
+      else if (/bni/i.test(fullText)) bankName = 'BANK NEGARA INDONESIA (BNI)';
+      else if (/bri/i.test(fullText)) bankName = 'BANK RAKYAT INDONESIA (BRI)';
+
+      const dateRegex = /^(\d{2}[/-]\d{2}(?:[/-]\d{2,4})?|\d{2}\s+(?:JAN|FEB|MAR|APR|MEI|JUN|JUL|AGU|SEP|OKT|NOV|DES))\b/i;
+      const transactions = [];
+      let currentTx = null;
+
+      lines.forEach((line) => {
+        const cleanL = line.trim();
+        if (!cleanL || /halaman|page|bersambung|saldo awal|total mutasi/i.test(cleanL)) return;
+
+        const match = cleanL.match(dateRegex);
+        if (match) {
+          if (currentTx) finalizeTx(currentTx, transactions);
+          currentTx = {
+            tanggal: match[1],
+            keterangan: cleanL.slice(match[0].length).trim()
+          };
+        } else if (currentTx) {
+          currentTx.keterangan += ' ' + cleanL;
+        }
+      });
+      if (currentTx) finalizeTx(currentTx, transactions);
+
+      let totalDebit = 0, totalKredit = 0;
+      transactions.forEach(t => {
+        totalDebit += t.mutasiDebit;
+        totalKredit += t.mutasiKredit;
+      });
+
+      const saldoAkhir = transactions.length ? transactions[transactions.length - 1].saldo : 0;
+
+      return {
+        fileName: filename,
+        summary: {
+          bankName,
+          accountNumber: '5270-XXXX-XXXX',
+          period: 'Bulan Berjalan',
+          totalDebit,
+          totalKredit,
+          saldoAkhir,
+          totalTransactions: transactions.length
+        },
+        transactions
+      };
+    }
+
+    function finalizeTx(tx, list) {
+      const desc = tx.keterangan || '';
+      const isDB = /\b(DB|DEBIT|DEBET)\b/i.test(desc);
+      const numbers = desc.match(/\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?\b/g) || [];
+      
+      let saldo = 0, mutasi = 0;
+      if (numbers.length >= 2) {
+        saldo = parseIndoAmount(numbers[numbers.length - 1]);
+        mutasi = parseIndoAmount(numbers[numbers.length - 2]);
+      } else if (numbers.length === 1) {
+        saldo = parseIndoAmount(numbers[0]);
+      }
+
+      let cleanDesc = desc;
+      numbers.slice(-2).forEach(n => { cleanDesc = cleanDesc.replace(n, ''); });
+      cleanDesc = cleanDesc.replace(/\b(DB|CR|DEBET|KREDIT)\b/gi, '').replace(/\s+/g, ' ').trim();
+
+      list.push({
+        tanggal: tx.tanggal,
+        keterangan: cleanDesc || 'TRANSAKSI REKENING',
+        cabang: '0000',
+        tipe: isDB ? 'DB' : 'CR',
+        mutasiDebit: isDB ? mutasi : 0,
+        mutasiKredit: !isDB ? mutasi : 0,
+        saldo: saldo
+      });
+    }
+
+    // Render Pratinjau
+    function renderPreview(result) {
+      document.getElementById('uploadScreen').classList.add('hidden');
+      document.getElementById('previewScreen').classList.remove('hidden');
+
+      document.getElementById('previewBankName').innerText = result.summary.bankName;
+      document.getElementById('previewSubtitle').innerText = `${result.fileName} • ${result.transactions.length} baris transaksi diekstraksi`;
+
+      document.getElementById('kpiKredit').innerText = formatIDR(result.summary.totalKredit);
+      document.getElementById('kpiDebit').innerText = formatIDR(result.summary.totalDebit);
+      document.getElementById('kpiNet').innerText = formatIDR(result.summary.totalKredit - result.summary.totalDebit);
+      document.getElementById('kpiSaldo').innerText = formatIDR(result.summary.saldoAkhir);
+
+      renderTable();
+    }
+
+    function setLimit(lim) {
+      currentLimit = lim;
+      ['lim5', 'lim10', 'limAll'].forEach(id => {
+        document.getElementById(id).className = 'px-2.5 py-1 rounded-lg text-slate-500';
+      });
+      if (lim === '5') document.getElementById('lim5').className = 'px-2.5 py-1 rounded-lg bg-white shadow-xs font-bold text-slate-900';
+      if (lim === '10') document.getElementById('lim10').className = 'px-2.5 py-1 rounded-lg bg-white shadow-xs font-bold text-slate-900';
+      if (lim === 'all') document.getElementById('limAll').className = 'px-2.5 py-1 rounded-lg bg-white shadow-xs font-bold text-slate-900';
+      renderTable();
+    }
+
+    function renderTable() {
+      if (!parsedResult) return;
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+
+      let list = parsedResult.transactions;
+      if (currentLimit === '5') list = list.slice(0, 5);
+      else if (currentLimit === '10') list = list.slice(0, 10);
+
+      list.forEach((tx, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="p-2.5 text-center text-slate-400 font-mono">${idx + 1}</td>
+          <td class="p-2.5 text-center font-mono text-slate-700 whitespace-nowrap">${tx.tanggal}</td>
+          <td class="p-2.5 text-slate-800 font-medium">${tx.keterangan}</td>
+          <td class="p-2.5 text-center">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${tx.tipe === 'CR' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+              ${tx.tipe}
+            </span>
+          </td>
+          <td class="p-2.5 text-right font-mono text-rose-600">${tx.mutasiDebit > 0 ? formatIDR(tx.mutasiDebit) : '-'}</td>
+          <td class="p-2.5 text-right font-mono text-emerald-600">${tx.mutasiKredit > 0 ? formatIDR(tx.mutasiKredit) : '-'}</td>
+          <td class="p-2.5 text-right font-mono font-bold text-slate-900">${formatIDR(tx.saldo)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // SIMPAN KE GOOGLE SHEETS VIA google.script.run
+    function saveToGoogleSheets() {
+      if (!parsedResult) return;
+      const btn = document.getElementById('saveToSheetsBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ Menyimpan ke Spreadsheet...</span>';
+
+      // Cek apakah berjalan di lingkungan Google Apps Script
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>💾 Simpan ke Google Sheet Ini</span>';
+            if (res.success) {
+              const alertBox = document.getElementById('saveSuccessAlert');
+              document.getElementById('saveSuccessMessage').innerText = 
+                `Berhasil menambahkan ${res.rowsCount} baris transaksi ke tab "${res.sheetName}".`;
+              alertBox.classList.remove('hidden');
+            } else {
+              alert('Gagal: ' + res.message);
+            }
+          })
+          .withFailureHandler(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>💾 Simpan ke Google Sheet Ini</span>';
+            alert('Kesalahan sistem: ' + err);
+          })
+          .saveStatementData(parsedResult);
+      } else {
+        // Simulasi jika dibuka di luar Apps Script (Local preview)
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = '<span>💾 Simpan ke Google Sheet Ini</span>';
+          const alertBox = document.getElementById('saveSuccessAlert');
+          document.getElementById('saveSuccessMessage').innerText = 
+            `Simulasi Berhasil: ${parsedResult.transactions.length} baris siap dimasukkan ke Google Sheets saat dijalankan di Apps Script.`;
+          alertBox.classList.remove('hidden');
+        }, 1000);
+      }
+    }
+
+    // Download Backup Excel (.xlsx) dengan SheetJS
+    function downloadExcelLocal() {
+      if (!parsedResult) return;
+      const wb = XLSX.utils.book_new();
+      const rows = [
+        ['No', 'Tanggal', 'Keterangan', 'Cabang', 'Tipe', 'Mutasi Debit', 'Mutasi Kredit', 'Saldo Akhir'],
+        ...parsedResult.transactions.map((tx, idx) => [
+          idx + 1, tx.tanggal, tx.keterangan, tx.cabang, tx.tipe, tx.mutasiDebit, tx.mutasiKredit, tx.saldo
+        ])
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Rekening Koran');
+      XLSX.writeFile(wb, `${parsedResult.fileName.replace('.pdf', '')}_rekening_koran.xlsx`);
+    }
+
+    // Sample Data Loader
+    function loadSample(bank) {
+      if (bank === 'BCA') {
+        parsedResult = {
+          fileName: 'bca_estatement_sample.pdf',
+          summary: { bankName: 'PT BANK CENTRAL ASIA TBK (BCA)', totalDebit: 32685000, totalKredit: 58500000, saldoAkhir: 71065000, totalTransactions: 4 },
+          transactions: [
+            { tanggal: '01/08/2024', keterangan: 'TRSF E-BANKING CR / INVOICE JASA CLOUD', cabang: '0950', tipe: 'CR', mutasiDebit: 0, mutasiKredit: 25000000, saldo: 70250000 },
+            { tanggal: '02/08/2024', keterangan: 'BI-FAST DB / SEWA SERVER AWS', cabang: '0950', tipe: 'DB', mutasiDebit: 8500000, mutasiKredit: 0, saldo: 61750000 },
+            { tanggal: '05/08/2024', keterangan: 'QRIS DB / KOPI KENANGAN PARK', cabang: '0000', tipe: 'DB', mutasiDebit: 85000, mutasiKredit: 0, saldo: 61665000 },
+            { tanggal: '10/08/2024', keterangan: 'TRSF E-BANKING DB / GAJI KARYAWAN', cabang: '0950', tipe: 'DB', mutasiDebit: 24100000, mutasiKredit: 0, saldo: 37565000 }
+          ]
+        };
+      } else if (bank === 'MANDIRI') {
+        parsedResult = {
+          fileName: 'mandiri_livin_sample.pdf',
+          summary: { bankName: 'PT BANK MANDIRI (PERSERO) TBK', totalDebit: 33250000, totalKredit: 65000000, saldoAkhir: 113850000, totalTransactions: 3 },
+          transactions: [
+            { tanggal: '02/07/2024', keterangan: 'PEMINDAHBUKUAN / INVOICE IT Q3', cabang: '12001', tipe: 'CR', mutasiDebit: 0, mutasiKredit: 45000000, saldo: 127100000 },
+            { tanggal: '08/07/2024', keterangan: 'PEMBAYARAN VENDOR PT SINAR', cabang: '12001', tipe: 'DB', mutasiDebit: 28500000, mutasiKredit: 0, saldo: 98600000 },
+            { tanggal: '20/07/2024', keterangan: 'PEMBAYARAN LISTRIK PLN DAN WIFI', cabang: '12001', tipe: 'DB', mutasiDebit: 4750000, mutasiKredit: 0, saldo: 113850000 }
+          ]
+        };
+      } else {
+        parsedResult = {
+          fileName: 'bri_britama_sample.pdf',
+          summary: { bankName: 'PT BANK RAKYAT INDONESIA TBK', totalDebit: 11000000, totalKredit: 24500000, saldoAkhir: 28900000, totalTransactions: 3 },
+          transactions: [
+            { tanggal: '02/09/2024', keterangan: 'SETORAN TUNAI TELLER KANCA', cabang: '0341', tipe: 'CR', mutasiDebit: 0, mutasiKredit: 14500000, saldo: 29900000 },
+            { tanggal: '05/09/2024', keterangan: 'TRANSFER BRIMO GROSIR SEMBAKO', cabang: '0341', tipe: 'DB', mutasiDebit: 9500000, mutasiKredit: 0, saldo: 20400000 },
+            { tanggal: '12/09/2024', keterangan: 'PENARIKAN TUNAI ATM BRI PASAR', cabang: '0341', tipe: 'DB', mutasiDebit: 1500000, mutasiKredit: 0, saldo: 28900000 }
+          ]
+        };
+      }
+      renderPreview(parsedResult);
+    }
+
+    function resetView() {
+      parsedResult = null;
+      document.getElementById('pdfFileInput').value = '';
+      document.getElementById('previewScreen').classList.add('hidden');
+      document.getElementById('uploadScreen').classList.remove('hidden');
+      document.getElementById('saveSuccessAlert').classList.add('hidden');
+    }
+
+    function showLoading(show, text = '') {
+      const el = document.getElementById('loadingStatus');
+      const err = document.getElementById('errorMessage');
+      err.classList.add('hidden');
+      if (show) {
+        el.classList.remove('hidden');
+        document.getElementById('statusText').innerText = text;
+      } else {
+        el.classList.add('hidden');
+      }
+    }
+
+    function updateProgress(pct, text) {
+      document.getElementById('progressBar').style.width = pct + '%';
+      if (text) document.getElementById('statusText').innerText = text;
+    }
+
+    function showError(msg) {
+      const err = document.getElementById('errorMessage');
+      err.innerText = msg;
+      err.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
